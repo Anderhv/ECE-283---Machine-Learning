@@ -117,12 +117,14 @@ legend('Class 0','Class 1','Decision boundary')
 
 %% 4) Kernelized logistic regression
 
-N_training_samples = 200;
-X_0 = mvnrnd(m_0, C_0, N_training_samples/2);
-X_1 = random(dist_1,N_training_samples/2);
-l = 10^-1;
-X = [X_0; X_1]';
-K = -3*ones(200);
+N_training_samples = 80;
+%rng('default')
+X_0 = mvnrnd(m_0, C_0, N_training_samples/2)';
+X_1 = random(dist_1,N_training_samples/2)';
+l = 2.7;
+X = [X_0 X_1];
+
+K = -3*ones(N_training_samples);
 for i=1:size(X,2)
     for j=1:size(X,2)
         K(i,j) = exp(-norm(X(:,i)-X(:,j))^2/(2*l^2));
@@ -133,59 +135,61 @@ end
 a = zeros(N_training_samples,1);
 t = [zeros(N_training_samples/2,1); ones(N_training_samples/2,1)];
 
-lambda = 1;
+lambda = 1e-3;
 for k=1:10
     y = 1./(1+exp(-a'*K))';
     R = diag(y.*(1-y));
     H = K*R*K+lambda*K;
     a0 = a;
 
-    a = a - H\K*(y-t+lambda*a);
+    a = a - H\(K*(y-t+lambda*a));
     
-%     if (abs(a-a0)<0.01)
-%         k
-%         break
-%     end 
+    if (abs(a-a0)<0.01)
+        k
+        break
+    end 
 end
 
 
 %% 5) Plotting of data points and decision boundary with the kernel trick
 
-
-% Decision boundary
-
 % Define the ranges of the grid
-u = linspace(-10, 10, 200);
-v = linspace(-10, 10, 200);
+u = linspace(-10, 10, N_training_samples);
+v = linspace(-10, 10, N_training_samples);
 
 % Initialize space for the values to be plotted
-zk = zeros(length(u), length(v));
+zk = -3*ones(length(u), length(v));
 
 % Evaluate z = a'*K over the grid
-X = [X_0; X_1]';
-K_uv = -3*ones(200);
-
-for i=1:size(X,2)
-    for j=1:size(X,2)
+%K_uv = -3*ones(N_training_samples);
+K_uv = -3*ones(N_training_samples,1);
+for i=1:length(X)
+    for j=1:length(X)
         x_uv = [u(i) ; v(j)];
-%         for m=1:size(X,2)
-%             for n=1:size(X,2)
-%                 K_uv(m,n) = exp(-norm(X(:,m)-x_uv)^2/(2*l^2));
-%             end
-%         end
-        K_uv(i,j) = exp(-norm(X(:,i)-x_uv)^2/(2*l^2));
+        for m=1:length(X)
+            K_uv(m) = exp(-norm(X(:,m)-x_uv)^2/(2*l^2));
+        end
+        zk(i,j) = a'*K_uv;
     end
 end
-for i = 1:length(u)
-    zk(:,i) = a'*K_uv;
-end
 
+% for i=1:size(X,2)
+%     x_uv = [u(i) ; v(j)];
+%     K_uv(i,j) = exp(-norm(X(:,i)-x_uv)^2/(2*l^2));
+% 
+%     for j=1:size(X,2)
+%     end
+% end
+% for i = 1:length(u)
+%     zk(i,:) = a'*K_uv(i,:);
+% end
+% 200x200
 % Plot the generated data
-figure(1);
-scatter(X_0(:,1), X_0(:,2),'+')
+figure(4);
+scatter(X_0(1,:), X_0(2,:),'+')
 hold on
-scatter(X_1(:,1), X_1(:,2),'+r')
-contour(u,v,zk, [0, 0],'k', 'LineWidth', 2)
+scatter(X_1(1,:), X_1(2,:),'+r')
+contour(u,v,zk,[0 0],'k', 'LineWidth', 2)
 title('Classification from ASD samples using the kernel trick')
 legend('Class 0','Class 1','Decision boundary')
 
@@ -284,3 +288,15 @@ scatter(MAP_test_samples_1(:,1), MAP_test_samples_1(:,2),'.r')
 contour(u,v,zp, [0, 0],'k', 'LineWidth', 2)
 title('Simulated classification of 1000 samples using the MAP rule')
 legend('Class 0','Class 1','Decision boundary')
+
+%%
+
+
+n = length(X);
+K = 0;
+for i = 1:n
+    for j = 1:n
+        K = K + norm(X(:,i)-X(:,j))^2;
+    end
+end
+K = K/(n^2)
