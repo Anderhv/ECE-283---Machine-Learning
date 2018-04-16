@@ -10,7 +10,7 @@ u_01 = [cos(theta_0), sin(theta_0)]';
 u_02 = [-sin(theta_0), cos(theta_0)]';
 C_0 = lambda_01*(u_01*u_01') + lambda_02*(u_02*u_02');
 
-%rng('default')
+rng(100)
 data_0 = mvnrnd(m_0, C_0, N)';
 
 % Class 1
@@ -83,7 +83,8 @@ legend('Class 0','Class 1','Decision boundary')
 
 %% 3) Estimation of conditional probability of incorrect classification with MAP
 
-N_test = 200;
+N_test = 300;
+rng(100)
 Test_X_0 = mvnrnd(m_0, C_0, N_test)';
 Test_X_1 = random(dist_1,N_test)';
 
@@ -104,91 +105,43 @@ p_incorr_0 = (N_test - corr_0)/N_test
 p_incorr_1 = (N_test - corr_1)/N_test
 
 % Plot the decision boundary with the test samples
-figure(3);
+figure(3); clf;
 scatter(Test_X_0(1,:), Test_X_0(2,:),'.b')
 hold on
 scatter(Test_X_1(1,:), Test_X_1(2,:),'.r')
 hold on
 contour(u,v,zp, [0, 0],'k', 'LineWidth', 2)
-title('Classification of 5000 samples using the MAP rule')
+title('Classification of ??? samples using the MAP rule')
 legend('Class 0','Class 1','Decision boundary')
 
 
 %% 4) Kernelized logistic regression
 
-N_training_samples = 200;
-%rng('default')
+N_training_samples = 1600;
+% Create a set of training samples
+rng(100)
 X_0 = mvnrnd(m_0, C_0, N_training_samples/2)';
 X_1 = random(dist_1,N_training_samples/2)';
-l = 2.7;
 X = [X_0 X_1];
 
-K = -3*ones(N_training_samples);
-for i=1:size(X,2)
-    for j=1:size(X,2)
-        K(i,j) = exp(-norm(X(:,i)-X(:,j))^2/(2*l^2));
-    end
-end
+l = 0.1;
+lambda = 0.01;
 
-% Newton iterations
-a = zeros(N_training_samples,1);
-t = [zeros(N_training_samples/2,1); ones(N_training_samples/2,1)];
-
-lambda = 1e-3;
-for k=1:10
-    y = 1./(1+exp(-a'*K))';
-    R = diag(y.*(1-y));
-    H = K*R*K+lambda*K;
-    a0 = a;
-
-    a = a - H\(K*(y-t+lambda*a));
-    
-    if (abs(a-a0)<0.01)
-        k
-        break
-    end 
-end
-
+a_26   = KLR(X, 26,  l, lambda);
+a_50   = KLR(X, 50,  l, lambda);
+a_100  = KLR(X, 100, l, lambda);
+a_200  = KLR(X, 200, l, lambda);
+%a_400  = KLR(X, 400, l, lambda);
+%a_800  = KLR(X, 800, l, lambda);
+%a_1600 = KLR(X_1600);
 
 %% 5) Plotting of data points and decision boundary with the kernel trick
 
-% Define the ranges of the grid
-res = 150;
-uk = linspace(-7, 7, res);
-vk = linspace(-7, 7, res);
+% Evaluate z = a'*K
+[z_50 ] = evaluateZ(X, 50,  a_50,  l); % N = 50
+%[z_100] = evaluateZ(X, 100, a_100, l); % N = 100
+[z_200] = evaluateZ(X, 200, a_200, l); % N = 200
 
-% Initialize space for the values to be plotted
-zk = zeros(length(uk), length(vk));
-ukp = zeros(1,1);
-vkp = zeros(1,1);
-
-% Evaluate z = a'*K over the grid
-K_uv = zeros(N_training_samples,1);
-figure(4); clf;
-for i=1:length(uk)
-    for j=1:length(vk)
-        x_uv = [uk(i) ; vk(j)];
-        for m=1:length(X)
-            K_uv(m) = exp(-norm(X(:,m)-x_uv)^2/(2*l^2));
-        end
-        zk(i,j) = a'*K_uv;
-        if (abs(zk(i,j)) < 0.2)
-            ukp(end+1) = uk(i);
-            vkp(end+1) = vk(j);
-        end
-    end
-end
-
-
-% Plot
-scatter(X_0(1,:), X_0(2,:),'+b')
-hold on
-scatter(X_1(1,:), X_1(2,:),'+r')
-hold on
-scatter(ukp, vkp,'.k')
-%contour(uk,vk,zk, [0 0], 'LineWidth', 2)
-title('Classification from ASD samples using the kernel trick')
-legend('Class 0','Class 1','Decision boundary')
 
 %% 6)
 corr_0 = 0;
