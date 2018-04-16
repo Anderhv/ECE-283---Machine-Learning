@@ -66,7 +66,6 @@ for i = 1:length(u)
     for j = 1:length(v)
         x(:,j) = [u(i) v(j)]';
     end
-    whos x
     p_uv_0  = getProbability(x, 0);
     p_uv_1  = getProbability(x, 1);
     zp(:,i) = p_uv_0 - p_uv_1;
@@ -84,7 +83,7 @@ legend('Class 0','Class 1','Decision boundary')
 
 %% 3) Estimation of conditional probability of incorrect classification with MAP
 
-N_test = 5000;
+N_test = 200;
 Test_X_0 = mvnrnd(m_0, C_0, N_test)';
 Test_X_1 = random(dist_1,N_test)';
 
@@ -117,7 +116,7 @@ legend('Class 0','Class 1','Decision boundary')
 
 %% 4) Kernelized logistic regression
 
-N_training_samples = 80;
+N_training_samples = 200;
 %rng('default')
 X_0 = mvnrnd(m_0, C_0, N_training_samples/2)';
 X_1 = random(dist_1,N_training_samples/2)';
@@ -154,47 +153,62 @@ end
 %% 5) Plotting of data points and decision boundary with the kernel trick
 
 % Define the ranges of the grid
-u = linspace(-10, 10, N_training_samples);
-v = linspace(-10, 10, N_training_samples);
+res = 150;
+uk = linspace(-7, 7, res);
+vk = linspace(-7, 7, res);
 
 % Initialize space for the values to be plotted
-zk = -3*ones(length(u), length(v));
+zk = zeros(length(uk), length(vk));
+ukp = zeros(1,1);
+vkp = zeros(1,1);
 
 % Evaluate z = a'*K over the grid
-%K_uv = -3*ones(N_training_samples);
-K_uv = -3*ones(N_training_samples,1);
-for i=1:length(X)
-    for j=1:length(X)
-        x_uv = [u(i) ; v(j)];
+K_uv = zeros(N_training_samples,1);
+figure(4); clf;
+for i=1:length(uk)
+    for j=1:length(vk)
+        x_uv = [uk(i) ; vk(j)];
         for m=1:length(X)
             K_uv(m) = exp(-norm(X(:,m)-x_uv)^2/(2*l^2));
         end
         zk(i,j) = a'*K_uv;
+        if (abs(zk(i,j)) < 0.2)
+            ukp(end+1) = uk(i);
+            vkp(end+1) = vk(j);
+        end
     end
 end
 
-% for i=1:size(X,2)
-%     x_uv = [u(i) ; v(j)];
-%     K_uv(i,j) = exp(-norm(X(:,i)-x_uv)^2/(2*l^2));
-% 
-%     for j=1:size(X,2)
-%     end
-% end
-% for i = 1:length(u)
-%     zk(i,:) = a'*K_uv(i,:);
-% end
-% 200x200
-% Plot the generated data
-figure(4);
-scatter(X_0(1,:), X_0(2,:),'+')
+
+% Plot
+scatter(X_0(1,:), X_0(2,:),'+b')
 hold on
 scatter(X_1(1,:), X_1(2,:),'+r')
-contour(u,v,zk,[0 0],'k', 'LineWidth', 2)
+hold on
+scatter(ukp, vkp,'.k')
+%contour(uk,vk,zk, [0 0], 'LineWidth', 2)
 title('Classification from ASD samples using the kernel trick')
 legend('Class 0','Class 1','Decision boundary')
 
 %% 6)
-% Ez?
+corr_0 = 0;
+corr_1 = 0;
+K_temp = zeros(length(X),1);
+zt = 0;
+for i=1:length(X)
+    for m=1:length(X)
+        K_temp(m) = exp(-norm(X(:,m)-X(:,i))^2/(2*l^2));
+    end
+    zt = a'*K_temp;
+    fprintf('Point nr %d at [%0.1f, %0.1f] has z = %0.2f\n',i,X(1,i),X(2,i),zt);
+    if     (zt < 0 && i <= (length(X)/2))
+        corr_0 = corr_0 + 1;
+    elseif (zt > 0 && i >  (length(X)/2))
+        corr_1 = corr_1 + 1;
+    end
+end
+p_incorr_0 = (length(X)/2 - corr_0)/(length(X)/2)
+p_incorr_1 = (length(X)/2 - corr_1)/(length(X)/2)
 
 %% 7)
 
@@ -261,7 +275,7 @@ N_test = 5000;
 MAP_test_samples_0 = mvnrnd(m_0, C_0, N_test);
 MAP_test_samples_1 = random(dist_1,N_test);
 
-Phi = createFeatureMatrix(MAP_test_samples_0, MAP_test_samples_1, 2);
+Phi = createFeatureMatrix([MAP_test_samples_0 MAP_test_samples_1]);
 
 class_0_correct = 0;
 class_1_correct = 0;
@@ -288,15 +302,3 @@ scatter(MAP_test_samples_1(:,1), MAP_test_samples_1(:,2),'.r')
 contour(u,v,zp, [0, 0],'k', 'LineWidth', 2)
 title('Simulated classification of 1000 samples using the MAP rule')
 legend('Class 0','Class 1','Decision boundary')
-
-%%
-
-
-n = length(X);
-K = 0;
-for i = 1:n
-    for j = 1:n
-        K = K + norm(X(:,i)-X(:,j))^2;
-    end
-end
-K = K/(n^2)
