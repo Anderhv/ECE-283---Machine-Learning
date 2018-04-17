@@ -1,3 +1,8 @@
+%% Homework 1 - Classification using Logistic Regression
+% Anders Haver Vagle, April 2018
+% In Homework group with: Sondre Kongsgaard, Morten Lie, Brage Saether,
+% Franky Meng, Yang Zhao, Yulin OU
+
 %% 1) Generate 2D synthetic data
 N = 200;
 
@@ -10,7 +15,7 @@ u_01 = [cos(theta_0), sin(theta_0)]';
 u_02 = [-sin(theta_0), cos(theta_0)]';
 C_0 = lambda_01*(u_01*u_01') + lambda_02*(u_02*u_02');
 
-rng(100)
+rng(888)
 X_0 = mvnrnd(m_0, C_0, N)';
 
 % Class 1
@@ -38,11 +43,11 @@ dist_1 = gmdistribution([m_1A'; m_1B'], cat(3,C_1A,C_1B),[pi_1A, pi_1B]);
 X_1 = random(dist_1,N)';
 
 % Plot the generated data
-figure(1); clf
+figure(20); clf
 scatter(X_0(1,:), X_0(2,:),'.b')
 hold on
 scatter(X_1(1,:), X_1(2,:),'.r')
-legend('Class 0', 'Class 1')
+legend('Class 0', 'Class 1','Location','SouthEast')
 title('200 samples generated from each class')
 
 % Save distribution parameters to .mat-file
@@ -71,20 +76,20 @@ for i = 1:length(u)
 end
 
 % Plot the decision boundary with the samples
-figure(2);
+figure(21);
 scatter(X_0(1,:), X_0(2,:),'.b')
 hold on
 scatter(X_1(1,:), X_1(2,:),'.r')
 hold on
 contour(u,v,z_MAP, [0, 0],'k', 'LineWidth', 2)
 title('Decision boundary using the MAP rule')
-legend('Class 0','Class 1','Decision boundary')
+legend('Class 0','Class 1','Decision boundary','Location', 'SouthEast')
 
 %% 3) Estimation of conditional probability of incorrect classification with MAP
 
 % Create a set of training samples for future tasks
 N_training_samples = 1600;
-rng('default')
+rng(888)
 X_0 = mvnrnd(m_0, C_0, N_training_samples/2)';
 X_1 = random(dist_1,N_training_samples/2)';
 X = [X_0 X_1];
@@ -92,127 +97,60 @@ X = [X_0 X_1];
 t_hat = classifyByMAP(X);
 
 % Plot the decision boundary with the test samples
-figure(3); clf;
+figure(22); clf;
 scatter(X_0(1,:), X_0(2,:),'.b')
 hold on
 scatter(X_1(1,:), X_1(2,:),'.r')
 hold on
 contour(u,v,z_MAP, [0, 0],'k', 'LineWidth', 2)
 title('Classification of 1600 samples using the MAP rule')
-legend('Class 0','Class 1','Decision boundary')
+legend('Class 0','Class 1','Decision boundary','Location', 'SouthEast')
 
 
 %% 4) 5) 6) with: Kernelized Logistic Regression
 
 l = 0.5;
-lambda = 1000;
+lambda = 10;
 
-%a_20   = KLR(X, 20,  l, lambda);
-%a_50   = KLR(X, 50,  l, lambda);
+a_20   = KLR(X, 20,  l, lambda);
+a_50   = KLR(X, 50,  l, lambda);
 a_100  = KLR(X, 100, l, lambda);
 a_200  = KLR(X, 200, l, lambda);
 a_400  = KLR(X, 400, l, lambda);
-%a_800  = KLR(X, 800, l, lambda);
-%a_1600 = KLR(X_1600);
+a_800  = KLR(X, 800, l, lambda);
 
 % Evaluate z = a'*K, calculate probabilities and plot decision boundary
-%[z_20 ] = classifyByKLR(X, 20,  a_20,  l); % N = 20
-%[z_50 ] = classifyByKLR(X, 50,  a_50,  l); % N = 50
+[z_20 ] = classifyByKLR(X, 20,  a_20,  l); % N = 20
+[z_50 ] = classifyByKLR(X, 50,  a_50,  l); % N = 50
 [z_100] = classifyByKLR(X, 100, a_100, l); % N = 100
 [z_200] = classifyByKLR(X, 200, a_200, l); % N = 200
 [z_400] = classifyByKLR(X, 400, a_400, l); % N = 400
-%[z_800] = classifyByKLR(X, 800, a_800, l); % N = 800
 
 
 %% 7) = 4) 5) 6) with: Non-kernelized Logistic Regression
 
-% Map the data to 3rd degree feature vectors, gather in matrix form
-Phi = createFeatureMatrix(X);
-w = zeros(size(Phi(:,1)));
-t = [zeros(1,N) ones(1,N)];
+[Phi_20,  w_20]  = NKLR(X, 20);
+[Phi_50,  w_50]  = NKLR(X, 50);
+[Phi_100, w_100] = NKLR(X, 100);
+[Phi_200, w_200] = NKLR(X, 200); 
+[Phi_400, w_400] = NKLR(X, 400);
+[Phi_800, w_800] = NKLR(X, 800);
+[Phi_1600, w_1600] = NKLR(X, 1600);
 
-for k=1:50
-    y = 1./(1+exp(-w'*Phi));
-    R = diag(y.*(1-y));
-    w0 = w;
-    w = w - (Phi*R*Phi')\Phi*(y-t)';
-    if (abs(w-w0)<0.001)
-        k
-        break
-    end 
-end
+% Evaluate z = w'*Phi, calculate probabilities and plot decision boundary
+z_100 = classifyByNKLR(X, 100, Phi_100, w_100);
+z_200 = classifyByNKLR(X, 200, Phi_200, w_200);
+z_400 = classifyByNKLR(X, 400, Phi_400, w_400);
+z_800 = classifyByNKLR(X, 800, Phi_800, w_800);
+z_1600 = classifyByNKLR(X, 1600, Phi_1600, w_1600);
 
-% Decision boundary
-% Define the ranges of the grid
-u = linspace(-10, 10, 200);
-v = linspace(-10, 10, 200);
+%% Conclusion
+% The MAP rule gives a decent indicator for what we could expect as the
+% best possible probabilities for correct classification of samples.
+% None of these models should thus be expected to have less than 15 %
+% chance of false classification. We see that the KLR method does not
+% converge for the chosen l and lambda with more than 400 points, while
+% NKLR does not converge with less than 100 points. The NKLR thus seems to
+% be better suited for larger sample sizes, and also runs faster than KLR. 
 
-% Initialize space for the values to be plotted
-z_MAP = zeros(length(u), length(v));
-
-% Evaluate z = theta*x over the grid
-for i = 1:length(u)
-    for j = 1:length(v)
-        phi_uv = createFeatureMatrix([u(i) v(j)]');
-        z_MAP(j,i) = w'*phi_uv;
-    end
-end
-
-% Plot the generated data
-figure(2);
-scatter(data_0(1,:), data_0(2,:),'+')
-hold on
-scatter(data_1(1,:), data_1(2,:),'+r')
-contour(u,v,z_MAP, [0, 0],'k', 'LineWidth', 2)
-title('Classification from 200 samples using the MAP rule')
-legend('Class 0','Class 1','Decision boundary')
-
-% Classify generated samples
-class_0_correct = 0;
-class_1_correct = 0;
-for i = 1:2*N
-    z = w'*Phi(:,i);
-    if (z < 0 && i <= N)
-        % Sample from Class 0 classified as Class 0
-        class_0_correct = class_0_correct + 1;
-    end
-    if (z > 0 && i > N)
-        % Sample from Class 1 classified as Class 1
-        class_1_correct = class_1_correct + 1;
-    end     
-end
-correct_classification_percentage = ((class_0_correct + class_1_correct) / (2*N))*100
-
-
-%% 3) 7test? Estimation of conditional probability of incorrect classification with MAP
-N_test = 5000;
-MAP_test_samples_0 = mvnrnd(m_0, C_0, N_test);
-MAP_test_samples_1 = random(dist_1,N_test);
-
-Phi = createFeatureMatrix([MAP_test_samples_0 MAP_test_samples_1]);
-
-class_0_correct = 0;
-class_1_correct = 0;
-for i = 1:2*N_test
-    z = w'*Phi(:,i);
-    if (z < 0 && i <= N_test)
-        % Sample from Class 0 classified as Class 0
-        class_0_correct = class_0_correct + 1;
-    end
-    if (z > 0 && i > N_test)
-        % Sample from Class 1 classified as Class 1
-        class_1_correct = class_1_correct + 1
-    end     
-end
-prob_error_class_0 = (N_test - class_0_correct) / N_test
-prob_error_class_1 = (N_test - class_1_correct) / N_test
-
-
-% Plot the generated data
-figure(1); clf
-scatter(MAP_test_samples_0(:,1), MAP_test_samples_0(:,2),'.')
-hold on
-scatter(MAP_test_samples_1(:,1), MAP_test_samples_1(:,2),'.r')
-contour(u,v,z_MAP, [0, 0],'k', 'LineWidth', 2)
-title('Simulated classification of 1000 samples using the MAP rule')
-legend('Class 0','Class 1','Decision boundary')
+%% Functions
