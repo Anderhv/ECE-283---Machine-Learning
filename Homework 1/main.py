@@ -33,5 +33,5 @@ plt.plot(x, bimix_gauss.prob(x).eval());
 
 
 #plt.plot(x_0, y_0, 'x')
-#plt.show()
+plt.show()
 
